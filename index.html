@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevJourney 2026: Smart AI Edition</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- ==========================================
+         HEADER
+         ========================================== -->
+    <header class="bg-white border-b border-slate-200 z-30 shadow-sm flex-none">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-lg relative group overflow-hidden">
+                    <i class="fa-solid fa-brain relative z-10 text-xl"></i>
+                    <div
+                        class="absolute inset-0 bg-gradient-to-tr from-fuchsia-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900 leading-tight">
+                        DevJourney <span
+                            class="bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-transparent bg-clip-text">Smart
+                            AI</span>
+                    </h1>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Akıllı Bellek Modu</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button onclick="openSettingsModal()"
+                    class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-all bg-slate-50 hover:bg-indigo-50 px-3 py-2 rounded-lg border border-slate-200 hover:border-indigo-200">
+                    <i class="fa-solid fa-key text-slate-400"></i>
+                    <span class="hidden sm:inline">AI Ayarları</span>
+                </button>
+                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                <button onclick="downloadBackup()"
+                    class="text-slate-500 hover:text-indigo-600 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                    title="Yedek İndir">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+                <label
+                    class="text-slate-500 hover:text-indigo-600 p-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Yedek Yükle">
+                    <i class="fa-solid fa-upload"></i>
+                    <input type="file" id="restoreInput" class="hidden" accept=".json" onchange="restoreBackup(this)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         MAIN LAYOUT
+         ========================================== -->
+    <div class="flex flex-grow overflow-hidden relative">
+
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white border-r border-slate-200 overflow-y-auto hidden lg:block flex-none z-20">
+            <div class="p-5 sticky top-0 bg-white/95 backdrop-blur z-10 border-b border-slate-50 mb-2">
+                <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Müfredat</h3>
+            </div>
+            <div id="moduleList" class="px-3 pb-6 space-y-1"></div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-grow bg-slate-50/50 overflow-y-auto p-4 md:p-8 relative scroll-smooth" id="mainScroll">
+            <div class="max-w-6xl mx-auto pb-24">
+
+                <!-- Hero Banner -->
+                <div
+                    class="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl mb-10 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div
+                            class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-full px-3 py-1 mb-3">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-[10px] font-bold tracking-wide uppercase text-emerald-100"
+                                id="currentDateDisplay">...</span>
+                        </div>
+                        <h2 class="text-3xl font-bold mb-2">Akıllı Asistan Devrede</h2>
+                        <p class="text-indigo-200 text-sm max-w-lg">Aldığınız AI cevapları artık kaydediliyor. Konuları
+                            tekrar incelediğinizde bekleme süresi yok.</p>
+                    </div>
+                    <div class="hidden md:flex gap-4 absolute bottom-8 right-8">
+                        <div class="bg-white/10 backdrop-blur p-4 rounded-xl text-center min-w-[100px]">
+                            <div class="text-2xl font-bold font-mono" id="statsCompleted">0</div>
+                            <div class="text-[10px] text-indigo-300 uppercase">Tamamlanan</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Warning Banner -->
+                <div id="aiStatusBanner"
+                    class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 text-red-700 text-sm cursor-pointer hover:bg-red-100"
+                    onclick="openSettingsModal()">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span><strong>Dikkat:</strong> API Anahtarını girmelisin.</span>
+                </div>
+
+                <!-- Days Container -->
+                <div id="daysContainer" class="space-y-12"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         MODALS
+         ========================================== -->
+
+    <!-- Settings Modal -->
+    <div id="settingsModal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Gemini API Ayarları</h3>
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 ml-1">API KEY</label>
+                <input type="password" id="apiKeyInput"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="AIzaSy...">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeSettingsModal()"
+                    class="px-5 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button>
+                <button onclick="saveApiKey()"
+                    class="px-6 py-2.5 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 md:p-6">
+        <div
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-full md:h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-100 bg-white flex justify-between items-start flex-none z-20">
+                <div class="flex-1 pr-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span id="modalMeta"
+                            class="text-[10px] font-extrabold text-white bg-indigo-600 px-2.5 py-1 rounded-md">GÜN
+                            X</span>
+                        <span id="modalQuarter"
+                            class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">ÇEYREK
+                            X</span>
+                    </div>
+                    <h2 id="modalTitle" class="text-xl md:text-2xl font-black text-slate-800 leading-tight">Konu Başlığı
+                    </h2>
+                </div>
+                <button onclick="closeModal()"
+                    class="text-slate-400 hover:text-red-500 text-xl w-8 h-8 flex items-center justify-center rounded-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-grow overflow-y-auto bg-slate-50/50">
+                <div class="p-6 md:p-8 space-y-8">
+
+                    <!-- Curriculum Summary -->
+                    <div
+                        class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                            <i class="fa-regular fa-compass mr-1"></i> Müfredat Özeti
+                        </h4>
+                        <p id="modalDesc" class="text-base text-slate-700 leading-relaxed font-medium relative z-10">
+                        </p>
+                        <div
+                            class="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-mono text-slate-400">
+                            <i class="fa-solid fa-link"></i>
+                            <span id="modalRef">Kaynak</span>
+                        </div>
+                    </div>
+
+                    <!-- AI Section -->
+                    <div
+                        class="bg-white rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/50 overflow-hidden">
+                        <!-- AI Header -->
+                        <div
+                            class="bg-gradient-to-r from-indigo-50 to-white p-4 border-b border-indigo-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-lg">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-extrabold text-slate-800">AI Masterclass</h4>
+                                    <p class="text-[10px] text-slate-500 font-medium">Auto-Save Aktif • Gemini 2.0</p>
+                                </div>
+                            </div>
+                            <!-- AI Action Buttons -->
+                            <div class="flex gap-2">
+                                <button onclick="triggerAI('explain')"
+                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm">
+                                    <i class="fa-solid fa-chalkboard-user"></i> Konuyu Anlat
+                                </button>
+                                <button onclick="triggerAI('code')"
+                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-emerald-600 hover:text-white border border-slate-200 hover:border-emerald-600 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm">
+                                    <i class="fa-solid fa-code"></i> Örnek Kod
+                                </button>
+                                <button onclick="triggerAI('quiz')"
+                                    class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-amber-500 hover:text-white border border-slate-200 hover:border-amber-500 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm">
+                                    <i class="fa-solid fa-brain"></i> Quiz
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- AI Content Area -->
+                        <div class="p-6 md:p-8 min-h-[150px] bg-white relative">
+                            <!-- Placeholder -->
+                            <div id="aiPlaceholder" class="text-center py-8 opacity-40">
+                                <i class="fa-brands fa-google text-4xl mb-3 text-slate-300"></i>
+                                <p class="text-sm font-medium text-slate-400">Bir eylem seçin, Gemini hazırlasın.</p>
+                            </div>
+
+                            <!-- Loading -->
+                            <div id="aiLoading"
+                                class="hidden absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center">
+                                <div class="typing-indicator mb-3">
+                                    <span></span><span></span><span></span>
+                                </div>
+                                <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest animate-pulse">
+                                    İçerik Hazırlanıyor...</p>
+                            </div>
+
+                            <!-- AI Output Wrapper -->
+                            <div id="aiContentWrapper" class="hidden">
+                                <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide"
+                                        id="aiContentTypeLabel">AI Çıktısı</span>
+                                    <button id="regenerateBtn"
+                                        class="text-xs font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors">
+                                        <i class="fa-solid fa-rotate"></i> Yeniden Oluştur
+                                    </button>
+                                </div>
+                                <div id="aiOutput"
+                                    class="prose prose-slate prose-sm md:prose-base max-w-none animate-fade-in-up">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Section -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="md:col-span-1">
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Çalışma Süresi (dk)</label>
+                                <input type="number" id="inputDuration"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    placeholder="20">
+                            </div>
+                            <div class="md:col-span-2 flex items-end">
+                                <label
+                                    class="flex items-center gap-4 cursor-pointer w-full p-2.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group">
+                                    <input type="checkbox" id="inputCompleted"
+                                        class="peer w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500">
+                                    <span
+                                        class="text-sm font-bold text-slate-600 group-hover:text-emerald-700 select-none">Tamamlandı</span>
+                                </label>
+                            </div>
+                            <div class="md:col-span-3">
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Notlar</label>
+                                <textarea id="inputNotes" rows="3"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none resize-none placeholder-slate-400"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 flex-none z-20">
+                <button onclick="closeModal()"
+                    class="px-6 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl text-sm font-bold">Vazgeç</button>
+                <button onclick="saveDayData()"
+                    class="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform active:scale-95 transition-all">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed bottom-8 right-8 bg-slate-800 text-white pl-4 pr-6 py-3.5 rounded-xl shadow-2xl transform translate-y-24 opacity-0 transition-all duration-300 z-[60] flex items-center gap-4">
+        <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <div>
+            <h5 class="text-sm font-bold">Başarılı</h5>
+            <p id="toastMsg" class="text-xs text-slate-400">Kaydedildi.</p>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         SCRIPTS
+         ========================================== -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

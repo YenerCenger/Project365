@@ -631,5 +631,52 @@ function updateStats() {
 // ==========================================
 // START
 // ==========================================
+
+// Fonksiyonları hemen tanımla (modül yüklenmeden önce)
+// Bu, HTML'deki onclick handler'lar için gerekli
+if (typeof window !== 'undefined') {
+    // Placeholder fonksiyonlar - init() çağrıldığında gerçek fonksiyonlarla değiştirilecek
+    window.openAuthModal = function() { 
+        if (typeof openAuthModal === 'function') return openAuthModal();
+        console.warn('Uygulama henüz yüklenmedi');
+    };
+    window.closeAuthModal = function() { 
+        if (typeof closeAuthModal === 'function') return closeAuthModal();
+    };
+    window.toggleAuthMode = function() { 
+        if (typeof toggleAuthMode === 'function') return toggleAuthMode();
+    };
+    window.handleAuth = function() { 
+        if (typeof handleAuth === 'function') return handleAuth();
+    };
+    window.handleSignOut = function() { 
+        if (typeof handleSignOut === 'function') return handleSignOut();
+    };
+    window.openSettingsModal = function() { 
+        if (typeof openSettingsModal === 'function') return openSettingsModal();
+    };
+    window.closeSettingsModal = function() { 
+        if (typeof closeSettingsModal === 'function') return closeSettingsModal();
+    };
+    window.saveApiKey = function() { 
+        if (typeof handleSaveApiKey === 'function') return handleSaveApiKey();
+    };
+    window.downloadBackup = function() { 
+        if (typeof handleDownloadBackup === 'function') return handleDownloadBackup();
+    };
+    window.restoreBackup = function(input) { 
+        if (typeof handleRestoreBackup === 'function') return handleRestoreBackup(input);
+    };
+    window.closeModal = function() { 
+        if (typeof handleCloseModal === 'function') return handleCloseModal();
+    };
+    window.saveDayData = function() { 
+        if (typeof handleSaveDayData === 'function') return handleSaveDayData();
+    };
+    window.triggerAI = function(action) { 
+        if (typeof handleTriggerAI === 'function') return handleTriggerAI(action);
+    };
+}
+
 document.addEventListener('DOMContentLoaded', init);
 

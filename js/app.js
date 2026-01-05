@@ -128,13 +128,16 @@ function handleSupabaseSync(event) {
  */
 function setupEventListeners() {
     // Global fonksiyonları window'a ekle (HTML onclick için)
-    // Bu fonksiyonlar sayfa yüklenmeden önce de erişilebilir olmalı
     window.openAuthModal = openAuthModal;
     window.closeAuthModal = closeAuthModal;
     window.toggleAuthMode = toggleAuthMode;
     window.handleAuth = handleAuth;
     window.handleSignOut = handleSignOut;
-    window.openSettingsModal = () => openSettingsModal(geminiApiKey);
+    window.openSettingsModal = () => {
+        if (typeof openSettingsModal === 'function') {
+            openSettingsModal(geminiApiKey);
+        }
+    };
     window.closeSettingsModal = closeSettingsModal;
     window.saveApiKey = handleSaveApiKey;
     window.downloadBackup = handleDownloadBackup;
@@ -142,25 +145,6 @@ function setupEventListeners() {
     window.closeModal = handleCloseModal;
     window.saveDayData = handleSaveDayData;
     window.triggerAI = handleTriggerAI;
-}
-
-// Sayfa yüklenmeden önce de fonksiyonları tanımla (inline script'ler için)
-// Bu, DOMContentLoaded'dan önce çalışan onclick handler'lar için gerekli
-if (typeof window !== 'undefined') {
-    // Placeholder fonksiyonlar - init() çağrıldığında gerçek fonksiyonlarla değiştirilecek
-    window.openAuthModal = function() { console.log('Yükleniyor...'); };
-    window.closeAuthModal = function() { console.log('Yükleniyor...'); };
-    window.toggleAuthMode = function() { console.log('Yükleniyor...'); };
-    window.handleAuth = function() { console.log('Yükleniyor...'); };
-    window.handleSignOut = function() { console.log('Yükleniyor...'); };
-    window.openSettingsModal = function() { console.log('Yükleniyor...'); };
-    window.closeSettingsModal = function() { console.log('Yükleniyor...'); };
-    window.saveApiKey = function() { console.log('Yükleniyor...'); };
-    window.downloadBackup = function() { console.log('Yükleniyor...'); };
-    window.restoreBackup = function() { console.log('Yükleniyor...'); };
-    window.closeModal = function() { console.log('Yükleniyor...'); };
-    window.saveDayData = function() { console.log('Yükleniyor...'); };
-    window.triggerAI = function() { console.log('Yükleniyor...'); };
 }
 
 // ==========================================
@@ -632,51 +616,10 @@ function updateStats() {
 // START
 // ==========================================
 
-// Fonksiyonları hemen tanımla (modül yüklenmeden önce)
+// Fonksiyonları hemen window'a ekle (modül yüklenir yüklenmez)
 // Bu, HTML'deki onclick handler'lar için gerekli
-if (typeof window !== 'undefined') {
-    // Placeholder fonksiyonlar - init() çağrıldığında gerçek fonksiyonlarla değiştirilecek
-    window.openAuthModal = function() { 
-        if (typeof openAuthModal === 'function') return openAuthModal();
-        console.warn('Uygulama henüz yüklenmedi');
-    };
-    window.closeAuthModal = function() { 
-        if (typeof closeAuthModal === 'function') return closeAuthModal();
-    };
-    window.toggleAuthMode = function() { 
-        if (typeof toggleAuthMode === 'function') return toggleAuthMode();
-    };
-    window.handleAuth = function() { 
-        if (typeof handleAuth === 'function') return handleAuth();
-    };
-    window.handleSignOut = function() { 
-        if (typeof handleSignOut === 'function') return handleSignOut();
-    };
-    window.openSettingsModal = function() { 
-        if (typeof openSettingsModal === 'function') return openSettingsModal();
-    };
-    window.closeSettingsModal = function() { 
-        if (typeof closeSettingsModal === 'function') return closeSettingsModal();
-    };
-    window.saveApiKey = function() { 
-        if (typeof handleSaveApiKey === 'function') return handleSaveApiKey();
-    };
-    window.downloadBackup = function() { 
-        if (typeof handleDownloadBackup === 'function') return handleDownloadBackup();
-    };
-    window.restoreBackup = function(input) { 
-        if (typeof handleRestoreBackup === 'function') return handleRestoreBackup(input);
-    };
-    window.closeModal = function() { 
-        if (typeof handleCloseModal === 'function') return handleCloseModal();
-    };
-    window.saveDayData = function() { 
-        if (typeof handleSaveDayData === 'function') return handleSaveDayData();
-    };
-    window.triggerAI = function(action) { 
-        if (typeof handleTriggerAI === 'function') return handleTriggerAI(action);
-    };
-}
+setupEventListeners();
 
+// DOM yüklendiğinde uygulamayı başlat
 document.addEventListener('DOMContentLoaded', init);
 

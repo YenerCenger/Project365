@@ -128,6 +128,7 @@ function handleSupabaseSync(event) {
  */
 function setupEventListeners() {
     // Global fonksiyonları window'a ekle (HTML onclick için)
+    // Bu fonksiyonlar sayfa yüklenmeden önce de erişilebilir olmalı
     window.openAuthModal = openAuthModal;
     window.closeAuthModal = closeAuthModal;
     window.toggleAuthMode = toggleAuthMode;
@@ -141,6 +142,25 @@ function setupEventListeners() {
     window.closeModal = handleCloseModal;
     window.saveDayData = handleSaveDayData;
     window.triggerAI = handleTriggerAI;
+}
+
+// Sayfa yüklenmeden önce de fonksiyonları tanımla (inline script'ler için)
+// Bu, DOMContentLoaded'dan önce çalışan onclick handler'lar için gerekli
+if (typeof window !== 'undefined') {
+    // Placeholder fonksiyonlar - init() çağrıldığında gerçek fonksiyonlarla değiştirilecek
+    window.openAuthModal = function() { console.log('Yükleniyor...'); };
+    window.closeAuthModal = function() { console.log('Yükleniyor...'); };
+    window.toggleAuthMode = function() { console.log('Yükleniyor...'); };
+    window.handleAuth = function() { console.log('Yükleniyor...'); };
+    window.handleSignOut = function() { console.log('Yükleniyor...'); };
+    window.openSettingsModal = function() { console.log('Yükleniyor...'); };
+    window.closeSettingsModal = function() { console.log('Yükleniyor...'); };
+    window.saveApiKey = function() { console.log('Yükleniyor...'); };
+    window.downloadBackup = function() { console.log('Yükleniyor...'); };
+    window.restoreBackup = function() { console.log('Yükleniyor...'); };
+    window.closeModal = function() { console.log('Yükleniyor...'); };
+    window.saveDayData = function() { console.log('Yükleniyor...'); };
+    window.triggerAI = function() { console.log('Yükleniyor...'); };
 }
 
 // ==========================================

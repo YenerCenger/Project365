@@ -1,132 +1,139 @@
 /**
  * DevJourney 2026: Smart AI Edition
- * Gemini AI Servisi
+ * AI Servisi (Gemini API)
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
-
-/**
- * AI prompt türleri
- */
 export const AI_ACTIONS = {
     EXPLAIN: 'explain',
     CODE: 'code',
     QUIZ: 'quiz'
 };
 
-/**
- * Sistem promptu - AI'nin rolünü ve davranışını tanımlar
- */
-const SYSTEM_PROMPT = `
-Rol ve Görev:
-Sen, hem akademik derinliğe sahip seçkin bir Bilgisayar Bilimleri Profesörü hem de sektörde yıllarını harcamış bir Kıdemli Yazılım Mimarisin. Görevin, bilgisayar mühendisliği öğrencilerine mentörlük yapmak. Üslubun profesyonel, cesaretlendirici, teknik açıdan kusursuz ve pedagojik olarak zengindir. Cevapların her zaman **Türkçe** olmalıdır. Markdown formatını etkin kullan.
-
-Eğer kullanıcı "Konuyu Anlat" derse:
-- Format: 1000-1500 kelimelik, 15-20 dakikada okunacak derinlemesine makale.
-- Yapı: Giriş/Analoji > Teknik Derinlik (Algoritma/Veri Yapısı) > Tarihçe > Sektörde Kullanımı > Avantaj/Dezavantaj.
-
-Eğer kullanıcı "Örnek Kod" derse:
-- Format: Production-Grade (Canlı ortam kalitesinde) kod.
-- Yapı: Kod (Hata yönetimi, tip güvenliği dahil) > Detaylı Yorumlar > Adım Adım Analiz.
-
-Eğer kullanıcı "Mini Quiz" derse:
-- Format: NotebookLM tarzı interaktif.
-- Yapı: 3 adet zorlayıcı senaryo sorusu > Düşünmeye teşvik > Detaylı cevap anahtarı ve nedenleri.
-`;
-
-/**
- * AI Servisi - Gemini API ile iletişimi yönetir
- */
-export const AIService = {
+export class AIService {
     /**
-     * Gemini API'ye istek gönderir
-     * @param {string} apiKey - Gemini API anahtarı
-     * @param {string} userPrompt - Kullanıcı promptu
-     * @returns {Promise<string>} AI yanıtı
-     */
-    async callGeminiAPI(apiKey, userPrompt) {
-        const url = `${GEMINI_API_URL}?key=${apiKey}`;
-        
-        const payload = {
-            contents: [
-                {
-                    role: "user",
-                    parts: [{ text: userPrompt }]
-                }
-            ],
-            systemInstruction: {
-                parts: [{ text: SYSTEM_PROMPT }]
-            },
-            generationConfig: {
-                temperature: 0.3,
-                maxOutputTokens: 8192
-            }
-        };
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'API Hatası');
-        }
-
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "Yanıt yok.";
-    },
-
-    /**
-     * Eyleme göre prompt oluşturur
-     * @param {string} action - Eylem tipi (explain, code, quiz)
-     * @param {Object} dayInfo - Gün bilgileri
-     * @returns {string} Oluşturulan prompt
-     */
-    buildPrompt(action, dayInfo) {
-        const { title, desc, ref } = dayInfo;
-
-        switch (action) {
-            case AI_ACTIONS.EXPLAIN:
-                return `Öğrenciye şu konuyu "Masterclass" seviyesinde anlat: "${title}". \nBağlam: ${desc}. \nReferans: ${ref}. \nYukarıdaki 'Konuyu Anlat' formatına birebir uy.`;
-            
-            case AI_ACTIONS.CODE:
-                return `"${title}" konusu için production-grade, güvenli bir kod örneği yaz. Satır satır yorumla.`;
-            
-            case AI_ACTIONS.QUIZ:
-                return `"${title}" konusu hakkında mülakat seviyesinde 3 adet senaryo bazlı soru ve detaylı cevap anahtarı hazırla.`;
-            
-            default:
-                throw new Error(`Bilinmeyen eylem: ${action}`);
-        }
-    },
-
-    /**
-     * Eylem için cache key oluşturur
+     * Cache key'i oluşturur
      * @param {string} action - Eylem tipi
      * @returns {string} Cache key
      */
-    getCacheKey(action) {
-        return `ai_${action}`;
-    },
+    static getCacheKey(action) {
+        const keyMap = {
+            [AI_ACTIONS.EXPLAIN]: 'ai_explain',
+            [AI_ACTIONS.CODE]: 'ai_code',
+            [AI_ACTIONS.QUIZ]: 'ai_quiz'
+        };
+        return keyMap[action] || 'ai_unknown';
+    }
 
     /**
-     * Eylem için etiket metni döndürür
+     * Eylem etiketini getirir
      * @param {string} action - Eylem tipi
-     * @returns {string} Etiket metni
+     * @returns {string} Etiket
      */
-    getActionLabel(action) {
-        switch (action) {
-            case AI_ACTIONS.EXPLAIN:
-                return "KONU ANLATIMI (ARŞİVLENDİ)";
-            case AI_ACTIONS.CODE:
-                return "ÖRNEK KOD (ARŞİVLENDİ)";
-            case AI_ACTIONS.QUIZ:
-                return "QUİZ (ARŞİVLENDİ)";
-            default:
-                return "AI ÇIKTISI";
+    static getActionLabel(action) {
+        const labelMap = {
+            [AI_ACTIONS.EXPLAIN]: '📚 Konu Açıklaması',
+            [AI_ACTIONS.CODE]: '💻 Örnek Kod',
+            [AI_ACTIONS.QUIZ]: '🧠 Quiz'
+        };
+        return labelMap[action] || 'AI Çıktısı';
+    }
+
+    /**
+     * Prompt oluşturur
+     * @param {string} action - Eylem tipi
+     * @param {Object} dayInfo - Gün bilgileri
+     * @returns {string} Prompt
+     */
+    static buildPrompt(action, dayInfo) {
+        const { title, desc, ref } = dayInfo;
+
+        const prompts = {
+            [AI_ACTIONS.EXPLAIN]: `Aşağıdaki yazılım mühendisliği konusunu detaylıca açıkla. Türkçe yanıt ver. Markdown formatında yaz.
+
+Konu: ${title}
+Açıklama: ${desc}
+Kaynak: ${ref}
+
+Konuyu şu başlıklar altında açıkla:
+- Kavramın tanımı ve önemi
+- Temel prensipler
+- Pratik kullanım örnekleri
+- Yaygın hatalar ve kaçınılması gerekenler
+- İlgili teknolojiler veya araçlar`,
+
+            [AI_ACTIONS.CODE]: `Aşağıdaki yazılım mühendisliği konusu için pratik kod örnekleri oluştur. Türkçe açıklamalar ekle. Markdown formatında yaz.
+
+Konu: ${title}
+Açıklama: ${desc}
+Kaynak: ${ref}
+
+Kod örneklerini şu şekilde sun:
+- Basit bir örnek
+- Orta seviye bir örnek
+- İleri seviye bir örnek (varsa)
+- Her örnek için açıklama`,
+
+            [AI_ACTIONS.QUIZ]: `Aşağıdaki yazılım mühendisliği konusu için eğitici bir quiz oluştur. Türkçe sorular. Markdown formatında yaz.
+
+Konu: ${title}
+Açıklama: ${desc}
+Kaynak: ${ref}
+
+Quiz formatı:
+- 5-7 soru (çoktan seçmeli veya kısa cevaplı)
+- Her soru için doğru cevap ve açıklama
+- Zorluk seviyesi: Orta-İleri`
+        };
+
+        return prompts[action] || `Konu hakkında bilgi ver: ${title}`;
+    }
+
+    /**
+     * Gemini API'yi çağırır
+     * @param {string} apiKey - API anahtarı
+     * @param {string} prompt - Prompt
+     * @returns {Promise<string>} AI yanıtı
+     */
+    static async callGeminiAPI(apiKey, prompt) {
+        if (!apiKey) {
+            throw new Error('API anahtarı gerekli');
+        }
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `API hatası: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) {
+                throw new Error('AI yanıtı alınamadı');
+            }
+
+            return text;
+        } catch (error) {
+            console.error('Gemini API hatası:', error);
+            throw error;
         }
     }
-};
+}
 

@@ -1,0 +1,19 @@
+{
+  "name": "devjourney-2026",
+  "version": "1.0.0",
+  "description": "DevJourney 2026: Smart AI Edition - 365 Günlük Yazılım Mühendisliği Eğitim Platformu",
+  "type": "module",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "start": "python -m http.server 8000"
+  },
+  "keywords": [
+    "education",
+    "software-engineering",
+    "curriculum",
+    "learning"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

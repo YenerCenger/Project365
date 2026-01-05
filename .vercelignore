@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.env.local
+*.log
+.DS_Store
+SUPABASE_KURULUM.md
+supabase-schema.sql
+

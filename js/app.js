@@ -5,6 +5,7 @@
 
 import { curriculum } from './data/curriculum.js';
 import { StorageService } from './services/storage.js';
+import { SupabaseService } from './services/supabase-service.js';
 import { AIService, AI_ACTIONS } from './services/ai-service.js';
 import { showToast } from './components/toast.js';
 import {
@@ -25,6 +26,13 @@ import {
 let progressData = {};
 let geminiApiKey = "";
 let activeDayId = null;
+let supabaseService = null;
+let isAuthMode = 'signin'; // 'signin' veya 'signup'
+let currentUser = null;
+
+// Supabase yapılandırması (Bu değerleri kendi Supabase projenizden alın)
+const SUPABASE_URL = 'https://svrkfiibmmqdeshpwhkn.supabase.co'; // Supabase proje URL'inizi buraya ekleyin
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cmtmaWlibW1xZGVzaHB3aGtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2MzYwOTYsImV4cCI6MjA4MzIxMjA5Nn0.M_AcWWoQ3BhmJXyReY8CxvQPTV_J7VWfL5tlHS2gx6s'; // Supabase anon key'inizi buraya ekleyin
 
 // ==========================================
 // INITIALIZATION
@@ -33,18 +41,44 @@ let activeDayId = null;
 /**
  * Uygulama başlatılır
  */
-function init() {
-    loadData();
+async function init() {
+    // Supabase servisini başlat
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        supabaseService = new SupabaseService(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Auth state listener
+        window.addEventListener('supabase-sync', handleSupabaseSync);
+
+        // Mevcut kullanıcıyı kontrol et
+        currentUser = await supabaseService.getCurrentUser();
+        updateAuthUI();
+    }
+
+    await loadData();
     renderApp();
     setupEventListeners();
 }
 
 /**
- * LocalStorage'dan verileri yükler
+ * Verileri yükler (Supabase veya LocalStorage)
  */
-function loadData() {
-    progressData = StorageService.loadProgressData();
-    geminiApiKey = StorageService.loadApiKey();
+async function loadData() {
+    if (supabaseService && supabaseService.isConnected() && currentUser) {
+        // Supabase'den yükle
+        try {
+            progressData = await supabaseService.loadProgressData();
+            geminiApiKey = await supabaseService.loadApiKey();
+        } catch (error) {
+            console.error('Supabase yükleme hatası:', error);
+            // Fallback: LocalStorage
+            progressData = StorageService.loadProgressData();
+            geminiApiKey = StorageService.loadApiKey();
+        }
+    } else {
+        // LocalStorage'dan yükle
+        progressData = StorageService.loadProgressData();
+        geminiApiKey = StorageService.loadApiKey();
+    }
 
     // API anahtarı yoksa uyarı göster
     if (!geminiApiKey) {
@@ -55,11 +89,34 @@ function loadData() {
 }
 
 /**
- * Verileri LocalStorage'a kaydeder
+ * Verileri kaydeder (Supabase veya LocalStorage)
  */
-function saveData() {
-    StorageService.saveProgressData(progressData);
+async function saveData() {
+    if (supabaseService && supabaseService.isConnected() && currentUser) {
+        // Supabase'e kaydet
+        try {
+            await supabaseService.saveProgressData(progressData);
+        } catch (error) {
+            console.error('Supabase kaydetme hatası:', error);
+            // Fallback: LocalStorage
+            StorageService.saveProgressData(progressData);
+        }
+    } else {
+        // LocalStorage'a kaydet
+        StorageService.saveProgressData(progressData);
+    }
     updateStats();
+}
+
+/**
+ * Supabase senkronizasyon event handler'ı
+ */
+function handleSupabaseSync(event) {
+    const { progressData: syncedProgress, apiKey: syncedApiKey } = event.detail;
+    progressData = syncedProgress;
+    geminiApiKey = syncedApiKey;
+    renderApp();
+    showToast('Veriler senkronize edildi');
 }
 
 // ==========================================
@@ -71,6 +128,11 @@ function saveData() {
  */
 function setupEventListeners() {
     // Global fonksiyonları window'a ekle (HTML onclick için)
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.toggleAuthMode = toggleAuthMode;
+    window.handleAuth = handleAuth;
+    window.handleSignOut = handleSignOut;
     window.openSettingsModal = () => openSettingsModal(geminiApiKey);
     window.closeSettingsModal = closeSettingsModal;
     window.saveApiKey = handleSaveApiKey;
@@ -86,14 +148,160 @@ function setupEventListeners() {
 // ==========================================
 
 /**
+ * Auth modal'ını açar
+ */
+function openAuthModal() {
+    document.getElementById('authModal').classList.remove('hidden');
+    document.getElementById('authError').classList.add('hidden');
+    document.getElementById('authEmailInput').value = '';
+    document.getElementById('authPasswordInput').value = '';
+    isAuthMode = 'signin';
+    updateAuthModeUI();
+}
+
+/**
+ * Auth modal'ını kapatır
+ */
+function closeAuthModal() {
+    document.getElementById('authModal').classList.add('hidden');
+}
+
+/**
+ * Auth modunu değiştirir (giriş/kayıt)
+ */
+function toggleAuthMode() {
+    isAuthMode = isAuthMode === 'signin' ? 'signup' : 'signin';
+    updateAuthModeUI();
+}
+
+/**
+ * Auth mode UI'ını günceller
+ */
+function updateAuthModeUI() {
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const modeText = document.getElementById('authModeText');
+    const modeAction = document.getElementById('authModeAction');
+
+    if (isAuthMode === 'signin') {
+        submitBtn.textContent = 'Giriş Yap';
+        modeText.textContent = 'Kayıt ol';
+        modeAction.textContent = 'giriş yap';
+    } else {
+        submitBtn.textContent = 'Kayıt Ol';
+        modeText.textContent = 'Giriş yap';
+        modeAction.textContent = 'kayıt ol';
+    }
+}
+
+/**
+ * Auth handler (giriş/kayıt)
+ */
+async function handleAuth() {
+    const email = document.getElementById('authEmailInput').value.trim();
+    const password = document.getElementById('authPasswordInput').value;
+    const errorDiv = document.getElementById('authError');
+
+    if (!email || !password) {
+        errorDiv.textContent = 'Lütfen e-posta ve şifre girin.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (!supabaseService || !supabaseService.isConnected()) {
+        errorDiv.textContent = 'Supabase bağlantısı kurulmamış. Lütfen yapılandırmayı kontrol edin.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        errorDiv.classList.add('hidden');
+
+        if (isAuthMode === 'signin') {
+            await supabaseService.signIn(email, password);
+            showToast('Giriş başarılı!');
+        } else {
+            await supabaseService.signUp(email, password);
+            showToast('Kayıt başarılı! E-posta doğrulama linkini kontrol edin.');
+        }
+
+        currentUser = await supabaseService.getCurrentUser();
+        updateAuthUI();
+        closeAuthModal();
+        await loadData();
+        renderApp();
+    } catch (error) {
+        errorDiv.textContent = error.message || 'Bir hata oluştu.';
+        errorDiv.classList.remove('hidden');
+    }
+}
+
+/**
+ * Çıkış yapar
+ */
+async function handleSignOut() {
+    if (supabaseService && supabaseService.isConnected()) {
+        try {
+            await supabaseService.signOut();
+            currentUser = null;
+            updateAuthUI();
+            progressData = {};
+            geminiApiKey = '';
+            await loadData();
+            renderApp();
+            showToast('Çıkış yapıldı');
+        } catch (error) {
+            console.error('Çıkış hatası:', error);
+        }
+    }
+}
+
+/**
+ * Auth UI'ını günceller
+ */
+function updateAuthUI() {
+    const authButtons = document.getElementById('authButtons');
+    const authButtonText = document.getElementById('authButtonText');
+
+    if (currentUser) {
+        authButtons.innerHTML = `
+            <button onclick="handleSignOut()"
+                class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-red-600 transition-all bg-slate-50 hover:bg-red-50 px-3 py-2 rounded-lg border border-slate-200 hover:border-red-200">
+                <i class="fa-solid fa-sign-out text-slate-400"></i>
+                <span class="hidden sm:inline">Çıkış Yap</span>
+            </button>
+            <span class="text-xs text-slate-500 hidden sm:inline">(${currentUser.email})</span>
+        `;
+    } else {
+        authButtons.innerHTML = `
+            <button onclick="openAuthModal()"
+                class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-all bg-slate-50 hover:bg-indigo-50 px-3 py-2 rounded-lg border border-slate-200 hover:border-indigo-200">
+                <i class="fa-solid fa-user text-slate-400"></i>
+                <span class="hidden sm:inline">Giriş Yap</span>
+            </button>
+        `;
+    }
+}
+
+/**
  * API anahtarını kaydetme handler'ı
  */
-function handleSaveApiKey() {
+async function handleSaveApiKey() {
     const key = document.getElementById('apiKeyInput').value.trim();
 
     if (key) {
         geminiApiKey = key;
-        StorageService.saveApiKey(key);
+
+        if (supabaseService && supabaseService.isConnected() && currentUser) {
+            try {
+                await supabaseService.saveApiKey(key);
+            } catch (error) {
+                console.error('Supabase API key kaydetme hatası:', error);
+                StorageService.saveApiKey(key);
+            }
+        } else {
+            StorageService.saveApiKey(key);
+        }
+
         closeSettingsModal();
         document.getElementById('aiStatusBanner').classList.add('hidden');
         showToast("API Anahtarı Kaydedildi!");
@@ -206,7 +414,7 @@ async function handleTriggerAI(action, forceRefresh = false) {
             progressData[activeDayId] = {};
         }
         progressData[activeDayId][cacheKey] = response;
-        saveData();
+        await saveData();
 
         // Sonucu render et
         const label = AIService.getActionLabel(action);
@@ -357,8 +565,8 @@ function createDayCard(day, quarter) {
     const card = document.createElement('div');
     card.onclick = () => handleOpenDayModal(day, quarter);
     card.className = `relative p-5 rounded-2xl border transition-all cursor-pointer group flex flex-col h-full day-card ${isDone
-            ? 'bg-emerald-50/40 border-emerald-200'
-            : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xl'
+        ? 'bg-emerald-50/40 border-emerald-200'
+        : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xl'
         }`;
 
     card.innerHTML = `

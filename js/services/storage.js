@@ -1,85 +1,95 @@
 /**
  * DevJourney 2026: Smart AI Edition
- * LocalStorage Servisi
+ * LocalStorage Servisi (Fallback)
  */
 
-const STORAGE_KEYS = {
-    PROGRESS_DATA: 'devJourneyPro_Data',
-    API_KEY: 'devJourneyPro_ApiKey'
-};
-
-/**
- * Storage servisi - LocalStorage işlemlerini yönetir
- */
-export const StorageService = {
+export class StorageService {
     /**
-     * İlerleme verisini yükler
-     * @returns {Object} Progress verisi
+     * İlerleme verilerini LocalStorage'dan yükler
+     * @returns {Object} İlerleme verileri
      */
-    loadProgressData() {
-        const savedData = localStorage.getItem(STORAGE_KEYS.PROGRESS_DATA);
-        return savedData ? JSON.parse(savedData) : {};
-    },
+    static loadProgressData() {
+        try {
+            const data = localStorage.getItem('devjourney_progress');
+            return data ? JSON.parse(data) : {};
+        } catch (error) {
+            console.error('LocalStorage okuma hatası:', error);
+            return {};
+        }
+    }
 
     /**
-     * İlerleme verisini kaydeder
-     * @param {Object} data - Kaydedilecek veri
+     * İlerleme verilerini LocalStorage'a kaydeder
+     * @param {Object} data - İlerleme verileri
      */
-    saveProgressData(data) {
-        localStorage.setItem(STORAGE_KEYS.PROGRESS_DATA, JSON.stringify(data));
-    },
+    static saveProgressData(data) {
+        try {
+            localStorage.setItem('devjourney_progress', JSON.stringify(data));
+        } catch (error) {
+            console.error('LocalStorage yazma hatası:', error);
+        }
+    }
 
     /**
-     * API anahtarını yükler
+     * API anahtarını LocalStorage'dan yükler
      * @returns {string} API anahtarı
      */
-    loadApiKey() {
-        return localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
-    },
+    static loadApiKey() {
+        try {
+            return localStorage.getItem('devjourney_api_key') || '';
+        } catch (error) {
+            console.error('API anahtarı okuma hatası:', error);
+            return '';
+        }
+    }
 
     /**
-     * API anahtarını kaydeder
+     * API anahtarını LocalStorage'a kaydeder
      * @param {string} key - API anahtarı
      */
-    saveApiKey(key) {
-        localStorage.setItem(STORAGE_KEYS.API_KEY, key);
-    },
+    static saveApiKey(key) {
+        try {
+            localStorage.setItem('devjourney_api_key', key);
+        } catch (error) {
+            console.error('API anahtarı kaydetme hatası:', error);
+        }
+    }
 
     /**
-     * Tüm veriyi yedek olarak indirir
-     * @param {Object} progressData - İlerleme verisi
+     * Yedek dosyası indirir
+     * @param {Object} progressData - İlerleme verileri
      * @param {string} apiKey - API anahtarı
      */
-    downloadBackup(progressData, apiKey) {
-        const dataToSave = {
+    static downloadBackup(progressData, apiKey) {
+        const backup = {
             progress: progressData,
-            settings: { hasKey: !!apiKey },
-            exportDate: new Date().toISOString()
+            apiKey: apiKey,
+            timestamp: new Date().toISOString()
         };
-        
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave, null, 2));
-        const downloadLink = document.createElement('a');
-        downloadLink.setAttribute("href", dataStr);
-        downloadLink.setAttribute("download", `DevJourney_Smart_Yedek_${new Date().toISOString().slice(0, 10)}.json`);
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        downloadLink.remove();
-    },
+
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `devjourney-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
     /**
      * Yedek dosyasını parse eder
      * @param {string} fileContent - Dosya içeriği
-     * @returns {Object} Parse edilmiş veri
+     * @returns {Object} İlerleme verileri
      */
-    parseBackupFile(fileContent) {
-        const content = JSON.parse(fileContent);
-        
-        // Eski format uyumluluğu
-        if (content.progress) {
-            return content.progress;
+    static parseBackupFile(fileContent) {
+        try {
+            const backup = JSON.parse(fileContent);
+            return backup.progress || {};
+        } catch (error) {
+            throw new Error('Geçersiz yedek dosyası formatı');
         }
-        
-        return content;
     }
-};
+}
 
